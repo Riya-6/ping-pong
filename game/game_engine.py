@@ -8,14 +8,32 @@ WHITE = (255, 255, 255)
 
 class GameEngine:
     def __init__(self, width, height):
+        # Initialize mixer for sound effects
+        pygame.mixer.init() 
+        
         self.width = width
         self.height = height
         self.paddle_width = 10
         self.paddle_height = 100
 
+        # --- Sound Assets ---
+        # NOTE: Replace these with actual paths to your .wav files.
+        try:
+            self.sound_paddle_hit = pygame.mixer.Sound("assets/paddle_hit.wav")
+            self.sound_wall_bounce = pygame.mixer.Sound("assets/wall_bounce.wav")
+            self.sound_score = pygame.mixer.Sound("assets/score.wav")
+        except pygame.error as e:
+            print(f"Warning: Could not load sound files. Placeholders used. Error: {e}")
+            self.sound_paddle_hit = None
+            self.sound_wall_bounce = None
+            self.sound_score = None
+        # --------------------
+
         self.player = Paddle(10, height // 2 - 50, self.paddle_width, self.paddle_height)
         self.ai = Paddle(width - 20, height // 2 - 50, self.paddle_width, self.paddle_height)
-        self.ball = Ball(width // 2, height // 2, 7, 7, width, height)
+        # Pass the sounds to the Ball object so it can handle its own collision sound logic
+        self.ball = Ball(width // 2, height // 2, 7, 7, width, height, 
+                         self.sound_paddle_hit, self.sound_wall_bounce)
 
         self.player_score = 0
         self.ai_score = 0
@@ -63,13 +81,19 @@ class GameEngine:
             self.ball.check_collision(self.player, self.ai)
 
             # Scoring logic
+            scored = False
             if self.ball.x <= 0:
                 self.ai_score += 1
-                self.ball.reset()
+                scored = True
             elif self.ball.x >= self.width:
                 self.player_score += 1
-                self.ball.reset()
+                scored = True
 
+            if scored:
+                if self.sound_score:
+                    self.sound_score.play()
+                self.ball.reset()
+                
             self.ai.auto_track(self.ball, self.height)
             
             # Check for game end after scores update
@@ -146,5 +170,6 @@ class GameEngine:
         winner = self.check_game_over()
         if winner:
             self.display_winner(screen, winner)
+
 
 
