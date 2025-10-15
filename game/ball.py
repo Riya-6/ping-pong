@@ -2,7 +2,7 @@ import pygame
 import random
 
 class Ball:
-    def __init__(self, x, y, width, height, screen_width, screen_height):
+    def __init__(self, x, y, width, height, screen_width, screen_height, sound_paddle_hit, sound_wall_bounce):
         self.original_x = x
         self.original_y = y
         self.x = x
@@ -13,6 +13,10 @@ class Ball:
         self.screen_height = screen_height
         self.velocity_x = random.choice([-5, 5])
         self.velocity_y = random.choice([-3, 3])
+        
+        # Store sound objects passed from GameEngine
+        self.sound_paddle_hit = sound_paddle_hit
+        self.sound_wall_bounce = sound_wall_bounce
 
     def move(self):
         self.x += self.velocity_x
@@ -20,11 +24,14 @@ class Ball:
 
         if self.y <= 0 or self.y + self.height >= self.screen_height:
             self.velocity_y *= -1
+            # Play wall bounce sound
+            if self.sound_wall_bounce:
+                self.sound_wall_bounce.play()
 
     def check_collision(self, player, ai):
         max_bounce_speed = 6 # Max vertical speed after hitting a paddle
 
-        # 1. Determine which paddle the ball is moving towards
+        # Determine which paddle the ball is moving towards
         if self.velocity_x < 0: # Moving left (towards player)
             paddle = player
             is_player_hit = True
@@ -32,11 +39,14 @@ class Ball:
             paddle = ai
             is_player_hit = False
 
-        # 2. Check for collision with the target paddle
+        # Check for collision with the target paddle
         if self.rect().colliderect(paddle.rect()):
             
+            # Play paddle hit sound
+            if self.sound_paddle_hit:
+                self.sound_paddle_hit.play()
+            
             # CRITICAL FIX FOR TUNNELLING: Reposition the ball to the edge of the paddle
-            # This ensures the ball is not stuck inside and prevents skipping the collision
             if is_player_hit:
                 # If moving left, set X to the right edge of the paddle
                 self.x = paddle.x + paddle.width
@@ -47,9 +57,7 @@ class Ball:
             # Reverse the X direction
             self.velocity_x *= -1
 
-            # 3. Calculate and apply new Y-velocity for spin/angle
-            # This makes the game feel much better: hitting the top/bottom of the paddle 
-            # results in a steeper angle.
+            # Calculate and apply new Y-velocity for spin/angle
             hit_center_y = self.y + (self.height / 2)
             paddle_center_y = paddle.y + (paddle.height / 2)
             
@@ -57,7 +65,6 @@ class Ball:
             normalized_y = relative_y / (paddle.height / 2) 
 
             self.velocity_y = normalized_y * max_bounce_speed
-
 
     def reset(self):
         self.x = self.original_x
@@ -67,3 +74,4 @@ class Ball:
 
     def rect(self):
         return pygame.Rect(self.x, self.y, self.width, self.height)
+
