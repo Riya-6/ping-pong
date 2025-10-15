@@ -22,8 +22,42 @@ class Ball:
             self.velocity_y *= -1
 
     def check_collision(self, player, ai):
-        if self.rect().colliderect(player.rect()) or self.rect().colliderect(ai.rect()):
+        max_bounce_speed = 6 # Max vertical speed after hitting a paddle
+
+        # 1. Determine which paddle the ball is moving towards
+        if self.velocity_x < 0: # Moving left (towards player)
+            paddle = player
+            is_player_hit = True
+        else: # Moving right (towards AI)
+            paddle = ai
+            is_player_hit = False
+
+        # 2. Check for collision with the target paddle
+        if self.rect().colliderect(paddle.rect()):
+            
+            # CRITICAL FIX FOR TUNNELLING: Reposition the ball to the edge of the paddle
+            # This ensures the ball is not stuck inside and prevents skipping the collision
+            if is_player_hit:
+                # If moving left, set X to the right edge of the paddle
+                self.x = paddle.x + paddle.width
+            else:
+                # If moving right, set X to the left edge of the paddle
+                self.x = paddle.x - self.width
+
+            # Reverse the X direction
             self.velocity_x *= -1
+
+            # 3. Calculate and apply new Y-velocity for spin/angle
+            # This makes the game feel much better: hitting the top/bottom of the paddle 
+            # results in a steeper angle.
+            hit_center_y = self.y + (self.height / 2)
+            paddle_center_y = paddle.y + (paddle.height / 2)
+            
+            relative_y = hit_center_y - paddle_center_y
+            normalized_y = relative_y / (paddle.height / 2) 
+
+            self.velocity_y = normalized_y * max_bounce_speed
+
 
     def reset(self):
         self.x = self.original_x
